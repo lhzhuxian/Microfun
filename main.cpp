@@ -15,28 +15,20 @@
 #include <stdio.h>
 #include <string>
 
-#define BUFFSIZE 100
+#include "connection.hpp"
 
+#define BACKLOG 20
+
+typedef struct kevent kcb;
 using namespace std;
 int max_event_count = 50;
 
-int listener;
-unordered_map<int, aiocb*> connection;
-void Prepare_IO(aiocb * block, int fd, int kq){
-  memset(block, 0, sizeof(aiocb));
-  block->aio_sigevent.sigev_notify = SIGEV_KEVENT;
-  block->aio_sigevent.sigev_notify_kqueue = kq;
-  block->aio_sigevent.sigev_notify_kevent_flags = EV_ONESHOT;
-  block->aio_sigevent.sigev_value.sival_ptr = block;
-  block->aio_reqprio = 0;
-  block->aio_buf = malloc(BUFFSIZE+1);
-  if(!block->aio_buf) perror("malloc");
-  block->aio_offset = 0;
-  block->aio_fildes = fd;
-  cout << fd << endl;
-  //block->aio_lio_opcode = i32LioOp;
-  block->aio_nbytes = BUFFSIZE;
-}
+int listener = 0;
+int kq = 0;
+
+//unordered_map<int, aiocb*> connection;
+
+
 void Accept(int kq, int size) {
   for (int i = 0; i < size; i++) {
     int client = accept(listener, NULL, NULL);
@@ -44,10 +36,9 @@ void Accept(int kq, int size) {
       perror("Accept failed");
     }
 
-    aiocb * block = static_cast<aiocb*> (malloc(sizeof(aiocb)));
-    connection[client] = block;
-    Prepare_IO(block, client, kq);
-    if(aio_read(connection[client]) < 0) perror("aio_read");
+    unique_ptr<connection> block(new connection(client, kq));
+    Connection_wrap wrapper(m, i, block.get());
+    block->Start(wrapper);
   }
 }
 
@@ -65,8 +56,9 @@ void Handle_event(int kq, struct kevent * events, int nevents) {
       if (events[i].flags & EV_ERROR) {
 	errx(EXIT_FAILURE, "Event error: %s", strerror(events[i].data));
       }
-      aiocb* tmp = static_cast<aiocb*> (events[i].udata);
-      int ret = aio_return(tmp);
+      connection_wrap* tmp = static_cast<connection_wrap*> (events[i].udata);
+      
+      int ret = aio_return();
       if (ret == -1) {
 	perror("read failed");
       } else {
@@ -85,7 +77,7 @@ void Handle_event(int kq, struct kevent * events, int nevents) {
 
 
 int main(void) {
-  // set up socket
+  // set up listener
   int status;
   addrinfo hints;
   addrinfo *servinfo;
@@ -100,15 +92,15 @@ int main(void) {
 
   listener = socket(servinfo->ai_family, servinfo->ai_socktype, servinfo->ai_protocol);
   bind(listener, servinfo->ai_addr, servinfo->ai_addrlen);
-  listen(listener, 20);
+  listen(listener, BACKLOG);
 
   // set up kqueue
 
-  int kq = kqueue();
+  kq = kqueue();
   if(kq == -1){
     err(EXIT_FAILURE, "kqueue() failed");
   }
-  struct kevent change;
+  kcb change;
   EV_SET(&change, listener, EVFILT_READ, EV_ADD, 0, 0, NULL);
   
   int ret = kevent(kq, &change, 1, NULL, 0, NULL);
@@ -119,7 +111,8 @@ int main(void) {
     errx(EXIT_FAILURE, "Event error: %s", strerror(change.data));
   }
 
-  struct kevent * events = static_cast<struct kevent *> (malloc(max_event_count * sizeof(struct kevent)));
+  kcb * events = static_cast<kcb *> (malloc(max_event_count * sizeof(kcb)));
+
   while(true) {
     int kn = kevent(kq, NULL, 0, events, max_event_count, NULL);
     if(kn == -1) {
