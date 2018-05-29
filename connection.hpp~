@@ -1,8 +1,0 @@
-#ifndef _CONNECTION_H_
-#define _CONNECTION_H_
-
-#include "commom.hpp"
-
-class Connection {
-  
-}

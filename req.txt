@@ -1,0 +1,30 @@
+GET http://www.qq.com/ HTTP/1.1
+Host: www.qq.com
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:59.0) Gecko/20100101 Firefox/59.0
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8
+Accept-Language: en-US,en;q=0.5
+Accept-Encoding: gzip, deflate
+Cookie: pgv_pvid=7563056600; ts_uid=7792071946; pac_uid=1_414227934; pgv_pvi=6121329664; pt2gguin=o0414227934; RK=MDjkDW1QUb; ptcz=8f2b237aaba147511f2ccf78645024953f22a59a74183b9f9582562d1697f78f; o_cookie=414227934
+Connection: keep-alive
+Upgrade-Insecure-Requests: 1
+
+GET http://www.qq.com/ HTTP/1.1
+Host: www.qq.com
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:59.0) Gecko/20100101 Firefox/59.0
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8
+Accept-Language: en-US,en;q=0.5
+Accept-Encoding: gzip, deflate
+Cookie: pgv_pvid=7563056600; ts_uid=7792071946; pac_uid=1_414227934; pgv_pvi=6121329664; pt2gguin=o0414227934; RK=MDjkDW1QUb; ptcz=8f2b237aaba147511f2ccf78645024953f22a59a74183b9f9582562d1697f78f; o_cookie=414227934
+Connection: keep-alive
+Upgrade-Insecure-Requests: 1
+
+GET http://www.qq.com/ HTTP/1.1
+Host: www.qq.com
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:59.0) Gecko/20100101 Firefox/59.0
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8
+Accept-Language: en-US,en;q=0.5
+Accept-Encoding: gzip, deflate
+Cookie: pgv_pvid=7563056600; ts_uid=7792071946; pac_uid=1_414227934; pgv_pvi=6121329664; pt2gguin=o0414227934; RK=MDjkDW1QUb; ptcz=8f2b237aaba147511f2ccf78645024953f22a59a74183b9f9582562d697f78f; o_cookie=414227934
+Connection: keep-alive
+Upgrade-Insecure-Requests: 1
+

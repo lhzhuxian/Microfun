@@ -5,7 +5,7 @@
 #include "common.hpp"
 #include <aio.h>
 
-#define BUFFSIZE 2000
+#define BUFFSIZE 1000
 class wrap{
 public:
   int fd;
@@ -15,9 +15,14 @@ public:
 };
 
 struct request {
+  
   int id;
   char * data;
 };
+
+struct response {
+};
+
 class Connection {
  
   int fd;
@@ -29,6 +34,8 @@ class Connection {
   //mutex cmutex;
   int current;
   int responsed;
+  priority_queue<response> waiting_for_send;
+  
 public:
   Connection(int f, int k);
   ~Connection();

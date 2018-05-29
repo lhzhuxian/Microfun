@@ -1,33 +1,16 @@
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netdb.h>
-#include <iostream>
-#include <sys/types.h>
-#include <sys/event.h>
-#include <sys/time.h>
-#include <err.h>
-#include <unordered_map>
-#include <aio.h>
-#include <signal.h>
-#include <cstring>
-#include <stdlib.h>
-#include <errno.h>
-#include <stdio.h>
-#include <string>
-
+#include "common.hpp"
 #include "connection.hpp"
 
 #define BACKLOG 20
 
 typedef struct kevent kcb;
-using namespace std;
+
 int max_event_count = 50;
 
 int listener = 0;
 int kq = 0;
 
-//unordered_map<int, aiocb*> connection;
-
+unordered_map<int , unique_ptr<Connection> > connections;
 
 void Accept(int kq, int size) {
   for (int i = 0; i < size; i++) {
@@ -36,9 +19,8 @@ void Accept(int kq, int size) {
       perror("Accept failed");
     }
 
-    unique_ptr<connection> block(new connection(client, kq));
-    Connection_wrap wrapper(m, i, block.get());
-    block->Start(wrapper);
+    connections[client] = unique_ptr<Connection>(new Connection(client, kq));
+    connections[client]->Start();
   }
 }
 
@@ -56,18 +38,9 @@ void Handle_event(int kq, struct kevent * events, int nevents) {
       if (events[i].flags & EV_ERROR) {
 	errx(EXIT_FAILURE, "Event error: %s", strerror(events[i].data));
       }
-      connection_wrap* tmp = static_cast<connection_wrap*> (events[i].udata);
-      
-      int ret = aio_return();
-      if (ret == -1) {
-	perror("read failed");
-      } else {
-	string ans = static_cast<char *> (const_cast<void *> (tmp->aio_buf));
-	cout << ans;
-      }
-      cout << "sock: " << sock << endl;
-      if(aio_read(tmp) < 0) perror("aio_read");
+      wrap* tmp = static_cast<wrap*> (events[i].udata);
 
+      connections[tmp->fd]->Deal(tmp->method, tmp->id);
     }
   }
 }
