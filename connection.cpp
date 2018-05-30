@@ -3,48 +3,58 @@
 #include "http_parser.h"
 
 
-int on_message_begin(http_parser* _) {
-  (void)_;
+int on_message_begin(http_parser* parser) {
   printf("\n***MESSAGE BEGIN***\n\n");
+  parser->data = new http_request()
   return 0;
 }
 
-int on_headers_complete(http_parser* _) {
-  (void)_;
+int on_headers_complete(http_parser* parser) {
   printf("\n***HEADERS COMPLETE***\n\n");
   return 0;
 }
 
-int on_message_complete(http_parser* _) {
-  (void)_;
+int on_message_complete(http_parser* parser) {
   printf("\n***MESSAGE COMPLETE***\n\n");
-  cout << " messge length: " << _->nread << endl;
+  http_request * request = static_cast<http_request *> (parser->data);
+  parser->data = NULL;
+  //handler();
+  return 0;
+}
+int on_body(http_parser* parser, const char* buf, size_t len){
+  cout << "body body wowowo" << endl;
+  return 1;
+  
+  http_request * request = static_cast<http_request *> (parser->data);
+  if (len < 3 * BUFFSIZE){}
+  if(strlen(buf) > len) {
+    request->set_data(buf, len);
+  }
+  
+}
+
+int on_url(http_parser* parser, const char* buf, size_t len) {
+  http_request * request = static_cast<http_request *> (parser->data);
+  request->set_url(buf, len);
+  printf("Url: %.*s\n", (int)len, buf);
   return 0;
 }
 
-int on_url(http_parser* _, const char* at, size_t length) {
-  (void)_;
-  printf("Url: %.*s\n", (int)length, at);
+int on_header_field(http_parser* parser, const char* buf, size_t len) {
+  http_request * request = static_cast<http_request *> (parser->data);
+  request->set_headers(buf, len);
+  printf("Header field: %.*s\n", (int)len, buf);
   return 0;
 }
 
-int on_header_field(http_parser* _, const char* at, size_t length) {
-  (void)_;
-  printf("Header field: %.*s\n", (int)length, at);
+int on_header_value(http_parser* parser, const char* buf, size_t len) {
+  http_request * request = static_cast<http_request *> (parser->data);
+  request->set_values(buf, len);
+  printf("Header value: %.*s\n", (int)len, buf);
+  
   return 0;
 }
 
-int on_header_value(http_parser* _, const char* at, size_t length) {
-  (void)_;
-  printf("Header value: %.*s\n", (int)length, at);
-  return 0;
-}
-
-int on_body(http_parser* _, const char* at, size_t length) {
-  (void)_;
-  printf("Body: %.*s\n", (int)length, at);
-  return 0;
-}
 
 
 
@@ -64,12 +74,22 @@ Connection::Connection(int f, int k) {
     Prepare_IO(&wblock[i].c, 1);
    
     available[i] = 1;
+    b[i].buf = malloc(BUFFSIZE+1);
+    memset(b[i].buf, 0, BUFFSIZE+1);
+    if(i == 0) {
+      b[i].stone = 1;
+    } else {
+      b[i].stone = 0;
+    }
   }
+  data = NULL;
+  cb = 3;
 }
 Connection::~Connection() {
   for (int i = 0; i < 3; ++i) {
     free(const_cast<void*>(rblock[i].c.aio_buf));
     free(const_cast<void*>(wblock[i].c.aio_buf));
+    free(b[i].buf);
   }
   //free(data);
 }
@@ -118,15 +138,30 @@ int Connection::Check_status(int method, int id) {
   }
 }
 
+void Connection::Receive_block(int method, int id) {
+  if (Check_status(method, id) == -1) {
+    perror("AIO error:");
+  }
+  if(!method) {
+    
+    memcpy(b[id].buf, rblock[i], BUFFSIZE+1);
+    int prev = id - 1;
+    if (prev < 0) prev = BLOCKSIZE;
+    if(
+    if (stone) {
+      Deal();
+    }
+  } else {
+    wav[id] = 1;
+  }
+  
+}
+
 void Connection::Deal(int method, int id) {
   int check;
   if ((check = Check_status(method, id)) == -1) {
     perror("AIO error:");
   }
-  cout << "fd: " << fd << endl;
-  cout << "method: " << method << endl;
-  cout << "id: " << id << endl;
-  cout << "return : " << check << endl;
   if (!method) {
     for (int i = 0; i < 3; ++i) {
       if (available[i]) {
@@ -164,7 +199,5 @@ void Connection::Deal(int method, int id) {
 	break;
       }
     }
-  } else {
-    available[id] = 1;
-  }
+
 }

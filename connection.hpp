@@ -6,6 +6,7 @@
 #include <aio.h>
 
 #define BUFFSIZE 2000
+#define BLOCKSIZE 3
 class wrap{
 public:
   int fd;
@@ -18,17 +19,24 @@ struct request {
   int id;
   char * data;
 };
+
+struct buffer{
+  int stone;
+  void * buf;
+}
 class Connection {
  
   int fd;
   int kq;
   wrap rblock[3];
   wrap wblock[3];
-  int available[3];
+  int rav[3];
+  int wav[3];
   void *data;
-  //mutex cmutex;
-  int current;
-  int responsed;
+  //mutex cmutex
+  int cb;
+  
+  buffer b[3];
 public:
   Connection(int f, int k);
   ~Connection();

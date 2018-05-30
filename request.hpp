@@ -6,9 +6,14 @@
 class http_request {
   string method;
   string url;
-  unordered_map<string, string> headers;
+  vector<string> headers;
+  vector<string> values;
+  void * next;
+  void * data;
 public:
-  http_request();
-  ~http_request();
-  
+  void set_method(const char * data, size_t length);
+  int set_url(const char * data, size_t length);
+  int set_headers(const char * data, size_t length);
+  int set_values(const char * data, size_t length);
+  int set_data(const char * data, size_t length);
 }
