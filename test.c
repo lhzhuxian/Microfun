@@ -90,7 +90,7 @@ int url_cb(http_parser *parser, const char *buf, size_t len) {
     request->method = (char *)http_method_str(parser->method);
     request->http_major = parser->http_major;
     request->http_minor = parser->http_minor;
-
+    printf("method: %s\n", request->method);
     alloc_cpy(request->url, buf, len)
     printf("\n");
     return 0;
@@ -127,6 +127,7 @@ int header_value_cb(http_parser *parser, const char *buf, size_t len) {
 
 int body_cb(http_parser *parser, const char *buf, size_t len) {
     printf("on body_cb: \n");
+    printf("len = %d\n", len);
     print_range(buf, len);
     printf("\n");
     struct http_request *request = (struct http_request *) parser->data;
@@ -177,13 +178,15 @@ const char * http_post_raw =  "POST /post_identity_body_world?q=search#hey HTTP/
          "\r\n"
   "World";
 const char * http_trunk_part_1 ="POST /post_identity_body_world?q=search#hey HTTP/1.1\r\n"
-  "Accept";
-const char * http_trunk_part_2 =": */*\r\n"
+  "Accept"
+  " : */*\R\n"
   "Transfer-Encoding: identity\r\n"
   "Content-Length: 5\r\n"
   "\r\n"
-  "W"
-  "orldfdafds";
+  "W";
+
+
+const char * http_trunk_part_2 =  "orld";
 
 
 
@@ -281,7 +284,7 @@ void test_http_chunk_part() {
   int res = http_parser_execute(parser, &parser_settings, http_trunk_part_1, strlen(http_trunk_part_1));
   //printf("method: %s, version: %u.%u\n",
      //requst->method, requst->http_major, requst->http_minor);
-
+  
   res = http_parser_execute(parser, &parser_settings, http_trunk_part_2, strlen(http_trunk_part_2));
    printf("method: %s, version: %u.%u\n",
      requst->method, requst->http_major, requst->http_minor);

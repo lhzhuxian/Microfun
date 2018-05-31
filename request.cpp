@@ -1,17 +1,33 @@
 
 #include "request.hpp"
 
-void http_request::set_method(const char *data, int len) {
-  method = move(new string(data, len));
+
+void http_request::set_url(const char * m) {
+  method = m;
 }
 void http_request::set_url(const char * data, int len){
-  url = move(new string(data, len));
+  url += string(data, len);
 }
 
 void http_request::set_headers(const char * data, int len){
-  headers.push_back(new string(data, len));
+  int size = headers.size();
+  if(size > values.size()) {
+    headers[size - 1] += string(data, len);
+  } else { 
+    headers.push_back(string(data, len));
+  }
 }
 void http_request::set_values(const char * data, int len){
-  values.push_back(new string(data, len));
-  next = data + len + 5;
+  int size = values.size();
+  if (size < headers.size()) {
+    values.push_back(string(data, len));
+  } else {
+    valuse[size - 1] += string(data, len);
+  }
+}
+
+void http_request::set_data(const char *data, int len) {
+  for(int i = 0; i < len; i++) {
+    data.push_back(data[len]);
+  }
 }

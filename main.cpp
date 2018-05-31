@@ -40,7 +40,7 @@ void Handle_event(int kq, struct kevent * events, int nevents) {
       }
       wrap* tmp = static_cast<wrap*> (events[i].udata);
 
-      connections[tmp->fd]->Deal(tmp->method, tmp->id);
+      connections[tmp->fd]->Receive_block(tmp->method, tmp->id);
     }
   }
 }

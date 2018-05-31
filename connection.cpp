@@ -4,39 +4,31 @@
 
 
 int on_message_begin(http_parser* parser) {
-  printf("\n***MESSAGE BEGIN***\n\n");
   parser->data = new http_request()
   return 0;
 }
 
 int on_headers_complete(http_parser* parser) {
-  printf("\n***HEADERS COMPLETE***\n\n");
+  if (parser->content_length > MAXDATASIZE) //handler();
   return 0;
 }
 
 int on_message_complete(http_parser* parser) {
-  printf("\n***MESSAGE COMPLETE***\n\n");
   http_request * request = static_cast<http_request *> (parser->data);
   parser->data = NULL;
-  //handler();
+  handler(request);
   return 0;
 }
 int on_body(http_parser* parser, const char* buf, size_t len){
-  cout << "body body wowowo" << endl;
-  return 1;
-  
   http_request * request = static_cast<http_request *> (parser->data);
-  if (len < 3 * BUFFSIZE){}
-  if(strlen(buf) > len) {
-    request->set_data(buf, len);
-  }
+  request->set_data(buf, len);
   
 }
 
 int on_url(http_parser* parser, const char* buf, size_t len) {
   http_request * request = static_cast<http_request *> (parser->data);
   request->set_url(buf, len);
-  printf("Url: %.*s\n", (int)len, buf);
+  request->set_method(static_cast<char *> (http_method_str(parser->method)));
   return 0;
 }
 
@@ -84,6 +76,15 @@ Connection::Connection(int f, int k) {
   }
   data = NULL;
   cb = 3;
+  setting_null.on_message_begin = on_message_begin;
+  setting_null.on_header_field = on_header_field;
+  setting_null.on_header_value = on_header_value;
+  setting_null.on_url = on_url;
+  setting_null.on_status = 0;
+  setting_null.on_body = on_body;
+  setting_null.on_headers_complete = on_headers_complete;
+  setting_null.on_message_complete = on_message_complete;
+
 }
 Connection::~Connection() {
   for (int i = 0; i < 3; ++i) {
@@ -145,11 +146,17 @@ void Connection::Receive_block(int method, int id) {
   if(!method) {
     
     memcpy(b[id].buf, rblock[i], BUFFSIZE+1);
+    full = true;
+    /*
     int prev = id - 1;
     if (prev < 0) prev = BLOCKSIZE;
-    if(
+    */
+
+    // need to think about how to read in order
+
+    aio_read(&rblock[id].c);
     if (stone) {
-      Deal();
+      Deal(id);
     }
   } else {
     wav[id] = 1;
@@ -157,47 +164,29 @@ void Connection::Receive_block(int method, int id) {
   
 }
 
-void Connection::Deal(int method, int id) {
-  int check;
-  if ((check = Check_status(method, id)) == -1) {
-    perror("AIO error:");
+void Connection::Deal(int id) {
+  const char * tmp =  const_cast<const char *> (static_cast<volatile char *> (rblock[id].c.aio_buf));
+  cout << "receive:" << strlen(tmp) << endl;
+  cout << tmp << endl;
+  // http parser
+  http_parser * parser = static_cast<http_parser*> (malloc(sizeof(http_parser)));
+  http_parser_init(parser, HTTP_REQUEST);
+  size_t parserd = http_parser_execute(parser, &setting_null, tmp, strlen(tmp));
+  
+  // http_parser();
+  if (parser->data) {
+    remain = static_cast<http_request *> (parser->data);
+    parser->data == NULL;
   }
-  if (!method) {
-    for (int i = 0; i < 3; ++i) {
-      if (available[i]) {
-	const char * tmp =  const_cast<const char *> (static_cast<volatile char *> (rblock[id].c.aio_buf));
-	cout << "receive:" << strlen(tmp) << endl;
-	cout << tmp << endl;
-	// http parser
-	http_parser * parser = static_cast<http_parser*> (malloc(sizeof(http_parser)));
-	http_parser_init(parser, HTTP_REQUEST);
-	http_parser_settings setting_null;
-	setting_null.on_message_begin = on_message_begin;
-	setting_null.on_header_field = on_header_field;
-	setting_null.on_header_value = on_header_value;
-	setting_null.on_url = on_url;
-	setting_null.on_status = 0;
-	setting_null.on_body = on_body;
-	setting_null.on_headers_complete = on_headers_complete;
-	setting_null.on_message_complete = on_message_complete;
-	
-	
-	size_t parserd = http_parser_execute(parser, &setting_null, tmp, strlen(tmp));
-	
-	// http_parser();
-
-	
-	
-	memcpy(const_cast<void*>(wblock[i].c.aio_buf),	\
-	       tmp,	\
-	       strlen(tmp));
-	available[i] = 0;
-	wblock[i].c.aio_nbytes = BUFFSIZE;
-	rblock[i].c.aio_nbytes = BUFFSIZE;
-	aio_write(&wblock[i].c);
-	aio_read(&rblock[id].c);
-	break;
-      }
-    }
-
+  
+  
+  memcpy(const_cast<void*>(wblock[i].c.aio_buf),	\
+	 tmp,						\
+	 strlen(tmp));
+  available[i] = 0;
+  wblock[i].c.aio_nbytes = BUFFSIZE;
+  rblock[i].c.aio_nbytes = BUFFSIZE;
+  aio_write(&wblock[i].c);
+  aio_read(&rblock[id].c);
+  break;
 }

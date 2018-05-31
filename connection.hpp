@@ -7,8 +7,8 @@
 
 #define BUFFSIZE 2000
 #define BLOCKSIZE 3
-class wrap{
-public:
+#define MAXDATASIZE 65536
+struct wrap{
   int fd;
   int method;
   int id;
@@ -21,9 +21,19 @@ struct request {
 };
 
 struct buffer{
-  int stone;
+  bool stone;
+  bool full;
   void * buf;
-}
+};
+int on_message_begin(http_parser* parser);
+int on_headers_complete(http_parser* parser);
+int on_message_complete(http_parser* parser) ;
+int on_body(http_parser* parser, const char* buf, size_t len);
+int on_url(http_parser* parser, const char* buf, size_t len);
+int on_header_field(http_parser* parser, const char* buf, size_t len);
+
+
+
 class Connection {
  
   int fd;
@@ -34,8 +44,9 @@ class Connection {
   int wav[3];
   void *data;
   //mutex cmutex
+  http_request * remain;
   int cb;
-  
+  http_parser_settings setting_null;
   buffer b[3];
 public:
   Connection(int f, int k);

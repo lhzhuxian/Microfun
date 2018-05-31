@@ -8,8 +8,9 @@ class http_request {
   string url;
   vector<string> headers;
   vector<string> values;
-  void * next;
-  void * data;
+  //void * next;
+  vector<char> data;
+  //int status; // -1 ini, 0 start, 1 finished
 public:
   void set_method(const char * data, size_t length);
   int set_url(const char * data, size_t length);
