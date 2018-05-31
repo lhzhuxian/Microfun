@@ -2,7 +2,7 @@
 #include "connection.hpp"
 
 #define BACKLOG 20
-
+#define MAXTHREAD 4
 typedef struct kevent kcb;
 
 int max_event_count = 50;
@@ -46,7 +46,19 @@ void Handle_event(int kq, struct kevent * events, int nevents) {
 }
 
 
-
+void Kfunction(){
+  kcb * events = static_cast<kcb *> (malloc(max_event_count * sizeof(kcb)));
+  
+  while(true) {
+    int kn = kevent(kq, NULL, 0, events, max_event_count, NULL);
+    if(kn == -1) {
+      err(EXIT_FAILURE, "kevent failed");
+    }
+    Handle_event(kq, events, kn);
+  }
+  free(events);
+  
+}
 
 
 int main(void) {
@@ -85,17 +97,10 @@ int main(void) {
   }
 
   kcb * events = static_cast<kcb *> (malloc(max_event_count * sizeof(kcb)));
-
-  while(true) {
-    int kn = kevent(kq, NULL, 0, events, max_event_count, NULL);
-    if(kn == -1) {
-      err(EXIT_FAILURE, "kevent failed");
-    }
-    Handle_event(kq, events, kn);
+  vector<unique_ptr<thread> > threadpool;
+  for (int i = 0; i < MAXTHREAD - 1; i++) {
+    threadpool.push_back(new thread(Kfunction));
+    threadpool[i].detach();
   }
-  
-  
-  
-  free(events);
   freeaddrinfo(servinfo);
 }
