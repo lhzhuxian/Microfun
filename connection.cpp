@@ -84,7 +84,7 @@ Connection::Connection(int f, int k) {
   setting_null.on_body = on_body;
   setting_null.on_headers_complete = on_headers_complete;
   setting_null.on_message_complete = on_message_complete;
-
+  request_id = 0;
 }
 Connection::~Connection() {
   for (int i = 0; i < 3; ++i) {
@@ -189,4 +189,10 @@ void Connection::Deal(int id) {
   aio_write(&wblock[i].c);
   aio_read(&rblock[id].c);
   break;
+}
+
+void Connection::Send_back(http_response response) {
+  waitinglist.push(response);
+  if (){
+  }
 }

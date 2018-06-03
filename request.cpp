@@ -31,3 +31,6 @@ void http_request::set_data(const char *data, int len) {
     data.push_back(data[len]);
   }
 }
+
+http_response::http_response(int i): request_id(i), len(0){}
+

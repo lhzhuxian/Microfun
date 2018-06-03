@@ -97,9 +97,9 @@ int main(void) {
   }
 
   kcb * events = static_cast<kcb *> (malloc(max_event_count * sizeof(kcb)));
-  vector<unique_ptr<thread> > threadpool;
+  vector<thread> > threadpool;
   for (int i = 0; i < MAXTHREAD - 1; i++) {
-    threadpool.push_back(new thread(Kfunction));
+    threadpool.push_back(thread(Kfunction));
     threadpool[i].detach();
   }
   freeaddrinfo(servinfo);

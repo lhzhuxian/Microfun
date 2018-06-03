@@ -42,8 +42,9 @@ class Connection {
   wrap wblock[3];
   int rav[3];
   int wav[3];
-  void *data;
-  //mutex cmutex
+  atomic<int> request_id;
+  atomic<int> responsed;
+  priority_queue<http_response> waitinglist;
   http_request * remain;
   int cb;
   http_parser_settings setting_null;
@@ -53,10 +54,10 @@ public:
   ~Connection();
   void Prepare_IO(aiocb *block, int i);
   int Check_status(int method, int id);
-  void Aread();
-  void Awrite();
+  void Receive_block(int method, int id);
+  void Send_back(http_response response);
   void Start();
-  void Deal(int method, int id);
+  void Deal(int id);
 };
 
 
