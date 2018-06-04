@@ -1,9 +1,10 @@
 #include "common.hpp"
 #include "connection.hpp"
 
+
 #define BACKLOG 20
 #define MAXTHREAD 4
-typedef struct kevent kcb;
+
 
 int max_event_count = 50;
 
@@ -13,6 +14,7 @@ int kq = 0;
 unordered_map<int , unique_ptr<Connection> > connections;
 
 void Accept(int kq, int size) {
+  // Accept the connection
   for (int i = 0; i < size; i++) {
     int client = accept(listener, NULL, NULL);
     if (client == -1) {
@@ -31,13 +33,16 @@ void Handle_event(int kq, struct kevent * events, int nevents) {
     if (events[i].flags & EV_ERROR) {
       errx(EXIT_FAILURE, "Event error: %s", strerror(data));
     }
+
     
     if (sock == listener) {
+      // there is a conneciton
       Accept(kq, data);
     } else {
       if (events[i].flags & EV_ERROR) {
 	errx(EXIT_FAILURE, "Event error: %s", strerror(events[i].data));
       }
+      
       wrap* tmp = static_cast<wrap*> (events[i].udata);
 
       connections[tmp->fd]->Receive_block(tmp->method, tmp->id);
@@ -46,23 +51,24 @@ void Handle_event(int kq, struct kevent * events, int nevents) {
 }
 
 
+
 void Kfunction(){
-  kcb * events = static_cast<kcb *> (malloc(max_event_count * sizeof(kcb)));
+  // IO multiplexing * AIO
+  unique_ptr<kcb> events(new kcb[max_event_count]);
   
   while(true) {
-    int kn = kevent(kq, NULL, 0, events, max_event_count, NULL);
+    int kn = kevent(kq, NULL, 0, events.get(), max_event_count, NULL);
     if(kn == -1) {
-      err(EXIT_FAILURE, "kevent failed");
+      perror("kevent failed");
+      continue;
     }
     Handle_event(kq, events, kn);
   }
-  free(events);
-  
 }
 
 
 int main(void) {
-  // set up listener
+  // set up listener 
   int status;
   addrinfo hints;
   addrinfo *servinfo;
@@ -79,25 +85,29 @@ int main(void) {
   bind(listener, servinfo->ai_addr, servinfo->ai_addrlen);
   listen(listener, BACKLOG);
 
-  // set up kqueue
+  // set up kqueue and register listener
 
-  kq = kqueue();
-  if(kq == -1){
-    err(EXIT_FAILURE, "kqueue() failed");
+  
+  if((kq = kqueue()) == -1){
+    perror("kqueue() failed");
+    exit(EXIT_FAILURE);
   }
   kcb change;
   EV_SET(&change, listener, EVFILT_READ, EV_ADD, 0, 0, NULL);
   
   int ret = kevent(kq, &change, 1, NULL, 0, NULL);
   if (ret == -1) {
-    err(EXIT_FAILURE, "kevent register");
+    perror("Falied in register listener");
+    exit(EXIT_FAILURE);
   }
   if (change.flags & EV_ERROR) {
     errx(EXIT_FAILURE, "Event error: %s", strerror(change.data));
   }
 
-  kcb * events = static_cast<kcb *> (malloc(max_event_count * sizeof(kcb)));
+  // set up threads and start running
+
   vector<thread> > threadpool;
+  
   for (int i = 0; i < MAXTHREAD - 1; i++) {
     threadpool.push_back(thread(Kfunction));
     threadpool[i].detach();

@@ -17,4 +17,9 @@ public:
   int set_headers(const char * data, size_t length);
   int set_values(const char * data, size_t length);
   int set_data(const char * data, size_t length);
+};
+struct http_response{
+  int request_id;
+  int len;
+  void * data;
 }

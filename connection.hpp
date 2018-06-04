@@ -12,19 +12,29 @@ struct wrap{
   int fd;
   int method;
   int id;
+  int len;
   aiocb c;
 };
 
-struct request {
-  int id;
-  char * data;
+
+
+
+class Ring_buffer{
+  void * ring[BLOCKSIZE];
+  void * buf[BLOCKSIZE];
+  atomic<int> stone;
+public:
+  Ring_buffer();
+  ~Ring_buffer();
+  int is_stone(int i);
+  int add_stone();
+  int next(int i);
+  void bufcpy(void * data, int len, int id);
+  void set_null(int i);
+  void * operator[](int i);
 };
 
-struct buffer{
-  bool stone;
-  bool full;
-  void * buf;
-};
+
 int on_message_begin(http_parser* parser);
 int on_headers_complete(http_parser* parser);
 int on_message_complete(http_parser* parser) ;
@@ -38,17 +48,19 @@ class Connection {
  
   int fd;
   int kq;
-  wrap rblock[3];
-  wrap wblock[3];
+  atomic<int> request_id;
+  int responsed;
   int rav[3];
   int wav[3];
-  atomic<int> request_id;
-  atomic<int> responsed;
-  priority_queue<http_response> waitinglist;
-  http_request * remain;
-  int cb;
+  wrap rblock[3];
+  wrap wblock[3];
+  unordered_map<int, http_response> waitinglist;
+  http_request * remain_request;
   http_parser_settings setting_null;
-  buffer b[3];
+  Ring_buffer ring;
+  mutex s_mutex;
+  mutex r_mutex;
+  http_response remain_response;
 public:
   Connection(int f, int k);
   ~Connection();
