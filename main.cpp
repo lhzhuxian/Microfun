@@ -1,6 +1,6 @@
 #include "common.hpp"
 #include "connection.hpp"
-
+#include "request.hpp"
 
 #define BACKLOG 20
 #define MAXTHREAD 4
@@ -11,7 +11,7 @@ int max_event_count = 50;
 int listener = 0;
 int kq = 0;
 
-unordered_map<int , unique_ptr<Connection> > connections;
+extern unordered_map<int , unique_ptr<Connection> > connections;
 
 void Accept(int kq, int size) {
   // Accept the connection
@@ -55,14 +55,15 @@ void Handle_event(int kq, struct kevent * events, int nevents) {
 void Kfunction(){
   // IO multiplexing * AIO
   unique_ptr<kcb> events(new kcb[max_event_count]);
-  
+  thread::id this_id = this_thread::get_id();
+  cout << "Thread: " << this_id << endl;
   while(true) {
     int kn = kevent(kq, NULL, 0, events.get(), max_event_count, NULL);
     if(kn == -1) {
       perror("kevent failed");
       continue;
     }
-    Handle_event(kq, events, kn);
+    Handle_event(kq, events.get(), kn);
   }
 }
 
@@ -106,11 +107,12 @@ int main(void) {
 
   // set up threads and start running
 
-  vector<thread> > threadpool;
+  vector<thread> threadpool;
   
   for (int i = 0; i < MAXTHREAD - 1; i++) {
     threadpool.push_back(thread(Kfunction));
     threadpool[i].detach();
   }
+  Kfunction();
   freeaddrinfo(servinfo);
 }

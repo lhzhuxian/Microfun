@@ -4,6 +4,7 @@
 
 #include "common.hpp"
 #include <aio.h>
+#include "request.hpp"
 
 #define BUFFSIZE 2000
 #define BLOCKSIZE 3
@@ -26,8 +27,9 @@ class Ring_buffer{
 public:
   Ring_buffer();
   ~Ring_buffer();
+
   int is_stone(int i);
-  int add_stone();
+  void add_stone();
   int next(int i);
   void bufcpy(void * data, int len, int id);
   void set_null(int i);
@@ -44,11 +46,12 @@ int on_header_field(http_parser* parser, const char* buf, size_t len);
 
 
 
+
 class Connection {
  
   int fd;
   int kq;
-  atomic<int> request_id;
+
   int responsed;
   int rav[3];
   int wav[3];
@@ -62,15 +65,18 @@ class Connection {
   mutex r_mutex;
   http_response remain_response;
 public:
+  atomic<int> request_id;
   Connection(int f, int k);
   ~Connection();
   void Prepare_IO(aiocb *block, int i);
   int Check_status(int method, int id);
   void Receive_block(int method, int id);
+  int Send(void*data, int offset, int len, int id);
   void Send_back(http_response response);
   void Start();
   void Deal(int id);
 };
 
-
+extern unordered_map<int, unique_ptr<Connection> > connections;
+void handler(http_request * request, Connection * c);
 #endif

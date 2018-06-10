@@ -2,35 +2,39 @@
 #include "request.hpp"
 
 
-void http_request::set_url(const char * m) {
-  method = m;
-}
-void http_request::set_url(const char * data, int len){
-  url += string(data, len);
+void http_request::set_method(const char *data) {
+  method = data;
 }
 
-void http_request::set_headers(const char * data, int len){
+void http_request::set_url(const char * data, unsigned int len){
+  url = url + string(data, len);
+}
+
+void http_request::set_headers(const char * data, unsigned int len){
   int size = headers.size();
   if(size > values.size()) {
-    headers[size - 1] += string(data, len);
+    headers[size - 1] = headers[size - 1] + string(data, len);
   } else { 
     headers.push_back(string(data, len));
   }
 }
-void http_request::set_values(const char * data, int len){
+void http_request::set_values(const char * data, unsigned int len){
   int size = values.size();
   if (size < headers.size()) {
     values.push_back(string(data, len));
   } else {
-    valuse[size - 1] += string(data, len);
+    values[size - 1] = values[size - 1] + string(data, len);
   }
 }
 
-void http_request::set_data(const char *data, int len) {
-  for(int i = 0; i < len; i++) {
-    data.push_back(data[len]);
-  }
+void http_request::set_data(const char *d, unsigned int len) {
+  data = data + string(d, len);
 }
 
-http_response::http_response(int i): request_id(i), len(0){}
+void http_request::set_id(int i) {
+  id = id;
+}
 
+http_response::http_response(int i): id(i), len(0), offset(0){}
+
+http_response::http_response():id(0), len(0), offset(0){}

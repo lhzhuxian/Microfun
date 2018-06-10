@@ -11,6 +11,10 @@
 #include <err.h>
 
 
+#include <thread>
+#include <mutex>
+#include <vector>
+#include <atomic>
 #include <unordered_map>
 #include <signal.h>
 #include <string.h>
@@ -19,6 +23,7 @@
 #include <stdio.h>
 #include <string>
 #include <memory>
+#include "http_parser.h"
 typedef struct kevent kcb;
 using namespace std;
 

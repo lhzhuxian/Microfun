@@ -1,0 +1,59 @@
+vbit_test-vbits.o: vbits.c /usr/include/stdio.h /usr/include/sys/cdefs.h \
+  /usr/include/sys/_null.h /usr/include/sys/_types.h \
+  /usr/include/machine/_types.h /usr/include/x86/_types.h \
+  /usr/include/machine/_limits.h /usr/include/x86/_limits.h \
+  /usr/include/assert.h /usr/include/sys/endian.h \
+  /usr/include/machine/endian.h /usr/include/x86/endian.h \
+  /usr/include/inttypes.h /usr/include/machine/_inttypes.h \
+  /usr/include/x86/_inttypes.h /usr/include/sys/stdint.h \
+  /usr/include/machine/_stdint.h /usr/include/x86/_stdint.h \
+  /usr/include/sys/_stdint.h vbits.h vtest.h ../../../VEX/pub/libvex.h \
+  ../../../VEX/pub/libvex_basictypes.h ../../../VEX/pub/libvex_ir.h
+
+/usr/include/stdio.h:
+
+/usr/include/sys/cdefs.h:
+
+/usr/include/sys/_null.h:
+
+/usr/include/sys/_types.h:
+
+/usr/include/machine/_types.h:
+
+/usr/include/x86/_types.h:
+
+/usr/include/machine/_limits.h:
+
+/usr/include/x86/_limits.h:
+
+/usr/include/assert.h:
+
+/usr/include/sys/endian.h:
+
+/usr/include/machine/endian.h:
+
+/usr/include/x86/endian.h:
+
+/usr/include/inttypes.h:
+
+/usr/include/machine/_inttypes.h:
+
+/usr/include/x86/_inttypes.h:
+
+/usr/include/sys/stdint.h:
+
+/usr/include/machine/_stdint.h:
+
+/usr/include/x86/_stdint.h:
+
+/usr/include/sys/_stdint.h:
+
+vbits.h:
+
+vtest.h:
+
+../../../VEX/pub/libvex.h:
+
+../../../VEX/pub/libvex_basictypes.h:
+
+../../../VEX/pub/libvex_ir.h:

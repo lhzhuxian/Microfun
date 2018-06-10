@@ -1,0 +1,16 @@
+prefix=/usr/local
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include/valgrind
+arch=x86
+os=freebsd
+platform=x86-freebsd
+valt_load_address=0x38000000
+
+Name: Valgrind
+Description: A dynamic binary instrumentation framework
+Version: 3.10.1
+Requires:
+Libs: -L${libdir}/valgrind -lcoregrind-x86-freebsd -lvex-x86-freebsd -lgcc
+Cflags: -I${includedir}
+
