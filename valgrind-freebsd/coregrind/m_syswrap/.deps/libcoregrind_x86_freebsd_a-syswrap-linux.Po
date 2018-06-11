@@ -1,2 +1,0 @@
-m_syswrap/libcoregrind_x86_freebsd_a-syswrap-linux.o: \
-  m_syswrap/syswrap-linux.c

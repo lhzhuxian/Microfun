@@ -1,2 +1,0 @@
-m_dispatch/libcoregrind_x86_freebsd_a-dispatch-amd64-freebsd.o: \
-  m_dispatch/dispatch-amd64-freebsd.S

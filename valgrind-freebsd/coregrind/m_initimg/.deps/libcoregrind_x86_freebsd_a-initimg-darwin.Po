@@ -1,2 +1,0 @@
-m_initimg/libcoregrind_x86_freebsd_a-initimg-darwin.o: \
-  m_initimg/initimg-darwin.c
