@@ -22,15 +22,12 @@ struct http_request {
   void set_headers(const char * data, unsigned int length);
   void set_values(const char * data, unsigned int length);
   void set_data(const char * data, unsigned int length);
-  void set_id(int id);
 };
 struct http_response{
   int id;
   int len;
   int offset;
-  void * data;
-  http_response();
-  http_response(int i);
+  string data;
 };
 
 #endif

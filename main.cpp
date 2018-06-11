@@ -26,12 +26,12 @@ void Accept(int kq, int size) {
   }
 }
 
-void Handle_event(int kq, struct kevent * events, int nevents) {
+void Handle_event(int kq, kcb * events, int nevents) {
   for (int i = 0; i < nevents; i++) {
     int sock = events[i].ident;
     int data = events[i].data;
     if (events[i].flags & EV_ERROR) {
-      errx(EXIT_FAILURE, "Event error: %s", strerror(data));
+      cerr << "Event error: " << strerror(data) << endl;
     }
 
     
@@ -39,13 +39,10 @@ void Handle_event(int kq, struct kevent * events, int nevents) {
       // there is a conneciton
       Accept(kq, data);
     } else {
-      if (events[i].flags & EV_ERROR) {
-	errx(EXIT_FAILURE, "Event error: %s", strerror(events[i].data));
-      }
-      
+           
       wrap* tmp = static_cast<wrap*> (events[i].udata);
-
-      connections[tmp->fd]->Receive_block(tmp->method, tmp->id);
+      int ans = connections[tmp->fd]->Receive_block(tmp->method, tmp->id);
+      if (!ans) connections.erase(connections.find(tmp->fd));
     }
   }
 }
@@ -54,16 +51,18 @@ void Handle_event(int kq, struct kevent * events, int nevents) {
 
 void Kfunction(){
   // IO multiplexing * AIO
-  unique_ptr<kcb> events(new kcb[max_event_count]);
+
+  kcb events[max_event_count];
   thread::id this_id = this_thread::get_id();
   cout << "Thread: " << this_id << endl;
+
   while(true) {
-    int kn = kevent(kq, NULL, 0, events.get(), max_event_count, NULL);
+    int kn = kevent(kq, NULL, 0, events, max_event_count, NULL);
     if(kn == -1) {
       perror("kevent failed");
       continue;
     }
-    Handle_event(kq, events.get(), kn);
+    Handle_event(kq, events, kn);
   }
 }
 
@@ -108,11 +107,13 @@ int main(void) {
   // set up threads and start running
 
   vector<thread> threadpool;
-  
-  for (int i = 0; i < MAXTHREAD - 1; i++) {
-    threadpool.push_back(thread(Kfunction));
-    threadpool[i].detach();
+  try {
+    for (int i = 0; i < MAXTHREAD; i++) {
+      threadpool.push_back(thread(Kfunction));
+      threadpool[i].detach();
+    }
+    Kfunction();
+  } catch (const exception & e) {
+    freeaddrinfo(servinfo);
   }
-  Kfunction();
-  freeaddrinfo(servinfo);
 }

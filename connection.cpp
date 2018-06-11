@@ -16,10 +16,9 @@ int on_headers_complete(http_parser* parser) {
 int on_message_complete(http_parser* parser) {
   http_request * request = static_cast<http_request *> (parser->data);
   
-  int id = connections[request->fd]->request_id.fetch_add(1, memory_order_relaxed);
-  request->set_id(id);
+  request->id =  connections[parser->fd]->get_request_id();
   parser->data = NULL;
-  handler(request, connections[request->fd].get());
+  handler(request, connections[parser->fd].get());
   return 0;
 }
 int on_body(http_parser* parser, const char* buf, size_t len){
@@ -38,14 +37,14 @@ int on_url(http_parser* parser, const char* buf, size_t len) {
 int on_header_field(http_parser* parser, const char* buf, size_t len) {
   http_request * request = static_cast<http_request *> (parser->data);
   request->set_headers(buf, len);
-  printf("Header field: %.*s\n", (int)len, buf);
+  //printf("Header field: %.*s\n", (int)len, buf);
   return 0;
 }
 
 int on_header_value(http_parser* parser, const char* buf, size_t len) {
   http_request * request = static_cast<http_request *> (parser->data);
   request->set_values(buf, len);
-  printf("Header value: %.*s\n", (int)len, buf);
+  //printf("Header value: %.*s\n", (int)len, buf);
   
   return 0;
 }
@@ -67,15 +66,15 @@ Ring_buffer::~Ring_buffer() {
 
 
 int Ring_buffer::is_stone(int i) {
-  int tmp = stone.load();
-    if(tmp % 3 == i) {
-      return 1;
-    } else {
-      return 0;
-    }
+  if(stone == i) {
+    stone = -1;
+    return 1;
+  } else {
+    return 0;
+  }
 }
-void Ring_buffer::add_stone() {
-  stone.fetch_add(1, memory_order_relaxed);
+void Ring_buffer::drop_stone(int id) {
+  stone = id;
 }
 
 int Ring_buffer::next(int i) {
@@ -99,8 +98,9 @@ void Ring_buffer::set_null(int id) {
   ring[id] = NULL;
 }
 
-Connection::Connection(int f, int k): fd(f), kq(k), responsed(0), rav({0, 0, 0}), wav({0, 0, 0}), request_id(0), remain_response(fd){
-  
+Connection::Connection(int f, int k): fd(f), kq(k), responsed(0), rav({0, 0, 0}), wav({1, 1, 1}), request_id(0), remain_response(fd){
+  http_parser_init(&parser, HTTP_REQUEST);
+  parser.fd = fd;
   for (int i = 0; i < 3; ++i) {
 
     rblock[i].method = 0;
@@ -109,6 +109,7 @@ Connection::Connection(int f, int k): fd(f), kq(k), responsed(0), rav({0, 0, 0})
     wblock[i].method = 1;
     wblock[i].id = i;
     wblock[i].fd = f;
+    wblock[i].len = BUFFSIZE;
     Prepare_IO(&rblock[i].c, 0);
     Prepare_IO(&wblock[i].c, 1);
   }
@@ -174,26 +175,31 @@ int Connection::Check_status(int method, int id) {
   }
 }
 
-void Connection::Receive_block(int method, int id) {
+int Connection::Receive_block(int method, int id) {
   if (Check_status(method, id) == -1) {
     perror("AIO error:");
     return;
   }
   if(!method) {
     ring.bufcpy(const_cast<void*> (rblock[id].c.aio_buf), BUFFSIZE + 1, id);
-    // need to think about how to read in order
 
-    aio_read(&rblock[id].c);
-    unique_lock <mutex> mlock(r_mutex);
-    if(mlock.try_lock()) {
-      if (ring.is_stone(id)) {
-	while(ring[id]) {
-	  Deal(id);
-	  id = ring.next(id);
-	  ring.add_stone();
-	}
+
+
+    // prevent race condition
+
+
+    //check if previous block has been dealed
+    if (ring.is_stone(id)) {
+      r_mutex.lock();
+      while(ring[id]) {
+	aio_read(&rblock[id].c);
+	if(!Deal(id)) return 0; // close the connection
+	id = ring.next(id);
       }
+      ring.drop_stone(id);
+      r_mutex.unlock(); 
     }
+    
   } else {
     wav[id] = 1;
     wblock[id].len = BUFFSIZE;
@@ -201,25 +207,22 @@ void Connection::Receive_block(int method, int id) {
       Send(remain_response.data, remain_response.offset, remain_response.len, id);
     }
   }
+  return 1;
   
 }
 
-void Connection::Deal(int id) {
+int Connection::Deal(int id) {
   const char * tmp =  const_cast<const char *> (static_cast<volatile char *> (rblock[id].c.aio_buf));
+  int len = strlen(tmp);
 
+  if (!len) return 0; // the connection is close
   // http parser
-  http_parser * parser = new http_parser;
-  http_parser_init(parser, HTTP_REQUEST);
-  parser->fd = fd;
-  size_t parserd = http_parser_execute(parser, &setting_null, tmp, strlen(tmp));
-  
-  // http_parser();
 
-    if (parser->data) {
-      remain_request = static_cast<http_request *> (parser->data);
-      parser->data = NULL;
-    }
-    ring.set_null(id);
+
+  http_parser_execute(&parser, &setting_null, tmp, strlen(tmp));
+  
+  ring.set_null(id);
+  return 1;
 }
 
 
@@ -256,10 +259,9 @@ int Connection::Send(void * data, int offset, int len, int id){
   }
 }
 void Connection::Send_back(http_response response) {
-  waitinglist[response.id] = response;
-
-  unique_lock<mutex> mlock(s_mutex);
-  if(mlock.try_lock()) {
+  if(responsed + 1 == response.id) {
+    
+    s_mutex.lock();
     for (int i = 0; i < 3; ++i) {
       if (remain_response.data) {
 	int flag = Send(remain_response.data, remain_response.offset, remain_response.len, i);
@@ -278,20 +280,22 @@ void Connection::Send_back(http_response response) {
 }
 
 
+int Connection::get_request_id() {
+  return ++request_id;
+}
 
 void handler(http_request * req, Connection* c) {
 
   
-  http_response response(req->id);
-  string data;
-  data = req->method + "; " + req->url + "; ";
+  http_response response = {req->id, 0, 0, NULL};
+
+  response.data = req->method + "; " + req->url + "; ";
   for(int i = 0; i < req->headers.size(); ++i) {
     
-    data += req->headers[i] + ": " + req->values[i] + "; ";
+    response.data += req->headers[i] + ": " + req->values[i] + "; ";
   }
-  data += req->data;
-  response.data = malloc(data.size() + 1);
-  memcpy(response.data, data.c_str(), data.size() + 1);
+  response.data += req->data;
+  
   c->Send_back(response);
   delete req;
 }

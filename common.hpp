@@ -11,6 +11,7 @@
 #include <err.h>
 
 
+#include <exception>
 #include <thread>
 #include <mutex>
 #include <vector>

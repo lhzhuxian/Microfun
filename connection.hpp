@@ -23,7 +23,7 @@ struct wrap{
 class Ring_buffer{
   void * ring[BLOCKSIZE];
   void * buf[BLOCKSIZE];
-  atomic<int> stone;
+  int stone;
 public:
   Ring_buffer();
   ~Ring_buffer();
@@ -55,6 +55,8 @@ class Connection {
   int responsed;
   int rav[3];
   int wav[3];
+  int request_id(0);
+  http_parser parser;
   wrap rblock[3];
   wrap wblock[3];
   unordered_map<int, http_response> waitinglist;
@@ -65,7 +67,7 @@ class Connection {
   mutex r_mutex;
   http_response remain_response;
 public:
-  atomic<int> request_id;
+
   Connection(int f, int k);
   ~Connection();
   void Prepare_IO(aiocb *block, int i);
@@ -75,6 +77,7 @@ public:
   void Send_back(http_response response);
   void Start();
   void Deal(int id);
+  int get_request_id();
 };
 
 extern unordered_map<int, unique_ptr<Connection> > connections;

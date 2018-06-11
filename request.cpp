@@ -31,10 +31,6 @@ void http_request::set_data(const char *d, unsigned int len) {
   data = data + string(d, len);
 }
 
-void http_request::set_id(int i) {
-  id = id;
-}
 
-http_response::http_response(int i): id(i), len(0), offset(0){}
 
-http_response::http_response():id(0), len(0), offset(0){}
+
